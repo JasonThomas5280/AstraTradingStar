@@ -1,5 +1,10 @@
 # Intraday research toward a 10% daily portfolio return
 
+Current deployment: the operator has since enabled a separate intraday paper
+execution worker; see [execution policy](intraday-execution.md). Observation-only
+statements below describe the earlier research stage. The scanner itself remains
+read-only, while fresh qualified signals may now be submitted by the mixed worker.
+
 ## Current available-feed variant
 The active read-only scanner now uses intraday_iex_news_5m_v1: live IEX bars,
 IEX VWAP/relative volume and a provisional 10,000-share IEX session volume floor.

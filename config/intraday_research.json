@@ -17,5 +17,5 @@
   "maximum_holding_minutes": 45,
   "last_entry_et": "15:00",
   "exit_by_et": "15:50",
-  "deployment_status": "research_and_prospective_observation"
+  "deployment_status": "paper_execution_via_separate_mixed_worker"
 }
