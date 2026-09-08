@@ -55,5 +55,6 @@ def evaluate(raw, previous_close, asof, *, minimum_session_volume=1000000):
         return {'eligible':False,'reason':'stop_distance','stop_fraction':str(distance)}
     return {'eligible':True,'reason':'confirmed_continuation','signal_at':last['t'].isoformat(),
             'gain':str(gain),'vwap':str(vwap),'session_volume':str(volume),
+            'signal_bar_volume':str(last['v']),'relative_volume':str(last['v']/prior_volume),
             'entry_limit':str(entry),'stop':str(stop),'target':str(entry+3*(entry-stop)),
             'maximum_holding_minutes':45}

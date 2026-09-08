@@ -81,3 +81,9 @@ Worker logs: logs/intraday_execution_v2.log and intraday_execution_v2_error.log.
 Scanner logs: logs/intraday_execution_scan.log. Existing ETF brackets remain.
 Runtime confirmed enabled and waiting for a qualifying signal, not halted.
 Suite: 327 tests, risk statement and branch coverage 100%. No performance claim.
+
+Execution policy v2 adds relative-volume priority, completed-bar participation
+cap, spread/stop-risk check, and sampled-peak-based 20-minute stall exits. Latest
+logs: logs/intraday_policy_v2.log / intraday_policy_v2_error.log; scanner uses
+logs/intraday_policy_v2_scan.log. Frozen IEX comparison: v1 zero trades, v2 two
+trades and -0.01885% over 41 sessions. This is not evidence of improved returns.

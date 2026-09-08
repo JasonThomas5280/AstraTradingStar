@@ -36,3 +36,27 @@ not worker orders. Orders and fills must be verified from the ledger/broker.
 This is explicitly experimental paper deployment. The prior selection-biased IEX
 diagnostic had zero trades across 41 sessions and does not establish an edge or
 support a claim of 10% daily returns. Enabling execution is not such evidence.
+
+## Execution policy v2
+
+Qualified candidates are prioritized by signal-bar volume divided by the median
+of the preceding six bars, rather than by their already-realized daily gain.
+Quantity is capped at 1% of completed signal-bar IEX volume, in addition to the
+existing cash, position and risk limits. Spread must pass both the existing 0.5%
+price limit and a 20% initial per-share stop-risk limit.
+
+After 20 minutes, a position at/below entry exits if its sampled price has never
+reached +0.5R. R means actual entry minus the original stop. The sampled peak is
+durable across restarts; it is not a tick-complete maximum. Existing hard stops,
+3R target and 45-minute/end-of-day exits remain. This may exit some trades that
+would subsequently recover; no claim of superior expectancy is established.
+
+A frozen 12-symbol, 41-session IEX comparison returned zero trades for v1 and
+two trades / -0.01885% for v2 after modeled costs. Both are selection-biased and
+neither achieved a 10% day. Historical spreads are unavailable and the replay
+uses bar highs instead of sampled marks for stall management. This diagnostic
+does not validate all live execution behavior or establish a profitable edge.
+
+Reproduce with scripts/research_intraday.py --feed iex --policy v1 and --policy v2
+--cached, supplying the same --universe-report for both. Reports are written to
+reports/intraday_backtest_iex_v1.json and reports/intraday_backtest_iex_v2.json.

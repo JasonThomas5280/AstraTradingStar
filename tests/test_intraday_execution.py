@@ -97,3 +97,35 @@ def test_intraday_time_exit_without_new_signal(engine,late):
 def test_missing_authorization_cannot_start(tmp_path):
     (tmp_path/'config').mkdir();(tmp_path/'config/intraday_execution.json').write_text('{"mode":"live"}')
     with pytest.raises(StateError):authorized(tmp_path)
+
+
+def test_order_size_respects_observed_liquidity():
+    signal={'entry_limit':'10','stop':'9.8','target':'10.6','signal_bar_volume':'500'}
+    assert order_for(signal,'ABC',{'equity':'2500','cash':'1000'})['qty']=='5'
+
+
+def test_volume_priority_not_daily_gain():
+    candidates=[{'relative_volume':'2','gain':'9'},{'relative_volume':'4','gain':'.1'}]
+    assert sorted(candidates,key=module.setup_priority,reverse=True)[0]['relative_volume']=='4'
+
+
+def test_spread_must_be_small_relative_to_stop_risk(engine,monkeypatch):
+    monkeypatch.setattr(module,'evaluate',lambda *a,**k:{'eligible':True,'entry_limit':'10.45','stop':'10.40','target':'10.60','signal_bar_volume':'10000'})
+    assert engine.try_candidate('ABC') is None
+    engine.broker.submit_bracket.assert_not_called()
+
+
+@pytest.mark.parametrize('age,peak,mark,expected',[(1199,'100','99',False),(1200,'100','99',True),(1200,'101','99',False),(1200,'100.5','100.2',False)])
+def test_stall_exit_requires_time_no_half_r_progress_and_nonpositive_mark(age,peak,mark,expected):
+    assert module.stalled_trade('100','98',mark,peak,age) is expected
+
+
+def test_stalled_intraday_position_exits(engine):
+    now=module.utcnow()
+    item={'client_id':'ag-i-old','symbol':'ABC','snapshot':{'filled_at':(now-timedelta(minutes=21)).isoformat(),'filled_avg_price':'100'},'payload':{'stop_loss':{'stop_price':'98'}}}
+    engine.ledger.active_intents.return_value=[item]
+    engine.ledger.get.side_effect=lambda key,default=None:now.isoformat() if key=='watchdog_heartbeat' else default
+    engine.time_exit=Mock()
+    result=engine.intraday_step({'cash':'200'},[{'symbol':'ABC','current_price':'99'}],now.astimezone(ET))
+    assert result['status']=='intraday_stall_exit_submitted'
+    engine.time_exit.assert_called_once_with(item)

@@ -122,3 +122,11 @@ the ETF-only worker and preserving its independent watchdog. This supersedes
 the earlier observation-only deployment restriction for this paper strategy.
 Validate actual fresh signals before entries, permit one ETF rotation when a
 qualified signal needs capacity, retain all monetary and bracket protections.
+
+#### Execution discipline revision
+Operator requests adjustment toward professional day trading. Apply observed
+relative-volume prioritization, 1% completed-bar participation, spread <=20% of
+initial stop risk, and a 20-minute stall exit when sampled peak never reached
+0.5R and current price is not profitable. Retain paper-only execution and existing
+loss controls. Frozen-universe comparison must be reported without a profitability
+claim; this is experimental management refinement, not a certified trading edge.
