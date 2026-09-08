@@ -1,8 +1,9 @@
-"""Durable halt latch and bounded flatten controller; broker adapter not wired.
+"""Durable halt latch and phased flatten controller.
 
-The broker interface MUST bound each call by its supplied remaining timeout.
-It must count partial fills as positions and pending cancels as open orders.
-This controller never treats an acknowledgement as a verified flat account.
+Timeouts and monotonic deadline checks are best effort: synchronous socket
+operations can overrun their supplied timeout. Late responses never prove a
+timely flatten. Partial fills remain positions and pending cancels remain orders.
+Acknowledgements never substitute for a verified flat account.
 """
 import json
 import os
@@ -38,12 +39,15 @@ class CircuitBreaker:
         except (OSError, ValueError, AttributeError):
             return True
 
-    def _persist(self, reason, flat):
+    def _persist(self, reason, flat, *, closing_started=False, liquidation_ids=None,
+                 uncertain_close=False, exit_sides=None):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temp = self.path.with_suffix(".tmp")
         with temp.open("w", encoding="utf-8") as handle:
             json.dump({"halted": True, "reason": reason, "flat_verified": flat,
-                       "postmortem_required": True}, handle)
+                       "postmortem_required": True, "closing_started": closing_started,
+                       "liquidation_ids": liquidation_ids or [], "uncertain_close": uncertain_close,
+                       "exit_sides": exit_sides or {}}, handle)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temp, self.path)
@@ -57,31 +61,68 @@ class CircuitBreaker:
         budget = float(number(budget, positive=True))
         if budget > 60:
             raise ValueError("flatten deadline exceeds policy")
-        self._persist(reason, False)  # Halt survives exceptions and restarts.
+        try:
+            previous = json.loads(self.path.read_text(encoding="utf-8"))
+            if not isinstance(previous, dict):
+                previous = {}
+        except (OSError, ValueError):
+            previous = {}
+        closing = previous.get("closing_started") is True and previous.get("flat_verified") is not True
+        uncertain = previous.get("uncertain_close") is True
+        liquidation_ids = previous.get("liquidation_ids", []) if closing else []
+        exit_sides = previous.get("exit_sides", {}) if closing else {}
+        def persist(flat=False):
+            self._persist(reason, flat, closing_started=closing,
+                          liquidation_ids=liquidation_ids, uncertain_close=uncertain,
+                          exit_sides=exit_sides)
+        persist()  # The phase/intent survives exceptions and process restarts.
         deadline = clock() + budget
+        canceled = closing
+        def timeout():
+            if clock() >= deadline:
+                raise TimeoutError("flatten_deadline")
+            return min(10, deadline - clock())
         while clock() < deadline:
             try:
-                broker.cancel_all(timeout=max(0.001, deadline - clock()))
-                if clock() >= deadline:
-                    break
-                if broker.open_orders(timeout=max(0.001, deadline - clock())) != []:
-                    sleep(min(1, max(0, deadline - clock())))
-                    continue
-                if clock() >= deadline:
-                    break
-                # Adapter must reconcile existing exit orders before resubmitting.
-                broker.close_all(timeout=max(0.001, deadline - clock()))
-                if clock() >= deadline:
-                    break
-                positions = broker.positions(timeout=max(0.001, deadline - clock()))
-                if clock() >= deadline:
-                    break
-                orders = broker.open_orders(timeout=max(0.001, deadline - clock()))
+                if not canceled:
+                    broker.cancel_all(timeout=timeout())
+                    canceled = True
+                if not closing:
+                    orders = broker.open_orders(timeout=timeout())
+                    if orders != []:
+                        canceled = False
+                        sleep(min(1, max(0, deadline - clock())))
+                        continue
+                    positions = broker.positions(timeout=timeout())
+                    if not isinstance(positions, list):
+                        raise ValueError("unknown_positions")
+                    exit_sides = {p["symbol"]: "sell" if p["side"] == "long" else "buy"
+                                  for p in positions}
+                    closing, uncertain = True, True
+                    persist()  # Durable close intent BEFORE any liquidation mutation.
+                    result = broker.close_all(timeout=timeout())
+                    liquidation_ids = [o["id"] for o in result or [] if isinstance(o, dict) and o.get("id")]
+                    uncertain = False
+                    persist()
+                positions = broker.positions(timeout=timeout())
+                orders = broker.open_orders(timeout=timeout())
                 if positions == [] and orders == [] and clock() < deadline:
-                    self._persist(reason, True)
+                    persist(True)
                     return True
+                # After liquidation starts, NEVER blanket-cancel pending exits.
+                # Unknown market exits can be an accepted-but-unacknowledged close;
+                # preserve only the expected closing direction for its symbol.
+                if isinstance(orders, list):
+                    for order in orders:
+                        own = order.get("id") in liquidation_ids
+                        unresolved_exit = (uncertain and order.get("type") == "market"
+                            and order.get("order_class") in (None, "", "simple")
+                            and order.get("symbol") in exit_sides
+                            and order.get("side") == exit_sides[order["symbol"]])
+                        if not own and not unresolved_exit:
+                            broker.cancel(order["id"], timeout=timeout())
             except Exception:
-                # No raw exception strings: they can contain headers or secrets.
+                # No raw exception strings; unknown close results are never retried.
                 pass
             sleep(min(1, max(0, deadline - clock())))
-        return False  # Remains latched; operator action and postmortem required.
+        return False  # Halt and unresolved close intent remain durable.

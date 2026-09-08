@@ -1,7 +1,6 @@
-"""Phase-one long-equity proposal checks, NOT an execution authorization.
-
-    No strategies, crypto, options, shorts or additions may execute in this release.
-    A future order manager must serialize reconciliation + reservations + submission.
+"""Long-equity proposal checks. The service additionally enforces qualification,
+fresh reconciliation, durable reservations and a healthy independent watchdog.
+Crypto, options, shorts and additions are disabled.
 """
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -124,8 +123,8 @@ def _evaluate(p, s):
         return Decision(False, "concentration")
     if sum(names.values()) > equity * Decimal("1.5"):
         return Decision(False, "gross_exposure")
-    # Phase one consists solely of strategy 6.1: stricter 40% sleeve cap.
-    if sum(names.values()) > equity * Decimal("0.40"):
+    # Operator revised the equity sleeve to 90% on 2026-09-08.
+    if sum(names.values()) > equity * Decimal("0.90"):
         return Decision(False, "strategy_sleeve")
     edges = set()
     for a, b in combinations(sorted(names), 2):
@@ -140,4 +139,4 @@ def _evaluate(p, s):
     if any(all(pair in edges for pair in combinations(group, 2))
            for group in combinations(sorted(names), 4)):
         return Decision(False, "correlation_cluster")
-    return Decision(True, "proposal_within_limits_execution_disabled")
+    return Decision(True, "proposal_within_limits")

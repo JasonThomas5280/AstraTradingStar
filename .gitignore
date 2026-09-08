@@ -14,6 +14,12 @@ dist/
 !.env.example
 logs/
 *.db
+*.db-wal
+*.db-shm
+state/*.lock
+state/*.pid
+HALT.md
+state/postmortem_*
 *.parquet
 state/*.json
 state/*.jsonl
@@ -21,3 +27,5 @@ journal/*.json*
 alerts/URGENT_*
 reports/daily_*
 reports/weekly_*
+reports/*.json
+/data/

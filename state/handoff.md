@@ -1,22 +1,89 @@
 # AlphaGrid handoff — 2026-09-08
 
-Status: Foundation passes 111 local tests; critical risk modules have 100% statement
-and branch coverage. Trading disabled; no running scheduler or watchdog.
-Credentials: Environment variables absent at initial inspection. Replacement paper
-credentials must be configured locally after rotation. Never copy credentials here.
+Branch: codex/autonomous-paper-service. Paper execution, supervised worker,
+independent watchdog, ledger/reconciliation, strategy research, and tests implemented.
 
-Account equity, cash, buying power: UNKNOWN (not fetched).
-Positions, resting orders, sleeve utilization: UNKNOWN (not reconciled).
-No orders were placed by this implementation. Do not infer that the broker is flat.
+Actual account authentication succeeded; balances are kept in local runtime state.
+At verification there were no positions or open orders. Flat initialization and a
+read-only reconciliation cycle succeeded. No trades placed by this task.
+Credentials are never stored in the repository. Use rotated environment credentials.
 
-Enabled strategies: None. Strategy 6.1 requires all deployment evidence first.
-Strategies 6.2-6.7: Disabled pending phase-one qualification.
-Theses/candidates/performance metrics: None; no fabricated portfolio baseline.
+Requested target:10% cash /90% invested, constrained by risk and qualified signals.
+Historical research:342 actual daily bars for each of 8 symbols, zero trades in the
+30-session holdout at tested sizing. No profitable edge established. Strategies
+6.2–6.7 remain disabled. The full 2 R exit is a separately documented 6.1 variant.
 
-Next steps: Inspect CI on the proposed revision; configure rotated environment
-credentials; run read-only diagnostics; build validated data/reconciliation and
-execution adapters; collect replay/walk-forward evidence and perform real paper
-kill-switch drill before enabling strategy 6.1.
+Deployment blockers: current CI/evidence, actual 90-day intraday replay, positive
+30-day OOS, real positioned paper flatten drill. Qualification manifest is absent.
+No autonomous trading service was started. Do not infer readiness from passing tests.
 
-Lesson: Passing risk unit tests demonstrates modeled behavior, not broker execution
-safety or positive expectancy. See state/plan.md for the authoritative roadmap.
+Next: inspect CI, freeze revisions before unseen validation, complete genuine
+qualification artifacts, then use initialize/readiness/serve per README. The
+operator's cash target alone is insufficient to approve an entry.
+
+## Execution drill update — 2026-09-08
+One operator-directed paper entry and immediate watchdog exit completed. Broker
+verified the account flat with no open orders. Local reports/operator_drill.json
+and state/postmortem_2026-09-08.md contain actual fills and outcome. Halt is latched.
+Account response omits daytrade_count; autonomous startup requires a tested
+history-derived counter fallback rather than assuming zero. No autonomous strategy
+was enabled by this manual execution test.
+
+## Revised operator mandate and experimental worker
+The operator explicitly requested immediate allocation with <=$250 cash and
+authorized strategy replacement. config/paper_experiment.json and
+docs/paper-experiment.md define the separate experimental momentum service.
+It is not a qualified pullback deployment. Current execution status must be read
+from local reports/momentum_paper_account.json, runtime ledger and the broker.
+Local logs/momentum_service_v3.log tracks the current startup. Credentials are
+in the hidden process environment only. Do not launch another worker or watchdog
+without inspecting existing processes and ownership locks.
+
+Integration repairs: accept a held bracket stop only with a fully filled parent
+and active profit leg; allow a bounded 15-second partial-fill settlement interval
+while blocking new entries; reset stale empty liquidation phase only when flat,
+reconciled, and holding watchdog ownership. Actual earlier recovery fills are
+journaled; postmortem_momentum_2026-09-08.md stays local. Full suite:295 tests.
+Research: final252-session experiment return11.70%, SPY price return18.15%,
+167 trades, max closing drawdown5.79%. Experimental, not proven outperformance.
+
+## Intraday research target revision
+Operator targets10% daily portfolio return. config/intraday_research.json and
+docs/intraday-research.md define a read-only stock continuation scanner and
+historical diagnostic. New recent SIP bars are forbidden by current entitlement;
+delayed SIP and real-time IEX are accessible. No silent feed substitution.
+Scanner captures prospective mover snapshots and marks delayed candidates
+ineligible. First current-universe diagnostic:41 sessions,2 trades,-0.74%,zero
+10% days, selection-biased; not a qualification or a basis for claimed profits.
+Current ETF worker/watchdog remain separate. Latest scanner state lives in
+reports/intraday_latest.json and its process/log files stay local.
+
+## Explicit IEX/news research variant
+The scanner now uses live IEX with its own provisional 10,000-share session
+volume floor and attaches accessible Alpaca news. This is a deliberate separate
+variant, not a silent substitution for SIP. News headlines are not verified
+catalysts. Matching IEX history replay: 41 sessions, zero trades, 0% return,
+zero 10% days. Current-universe selection bias remains. Intraday execution stays
+disabled; existing ETF worker and watchdog continue separately. Suite: 311 tests.
+
+Scanner repair: whole-word instrument exclusions and separate signal/quote
+diagnostics, tested with 315 passing tests and 100% risk coverage. Only scanner
+restarted; logs/intraday_diagnostics.log records its current output. Do not treat
+these engineering repairs as proven profitability improvements.
+
+## Mixed intraday paper worker enabled
+Operator explicitly requested intraday execution. The sole worker is now
+alphagrid.intraday_execution, which adopts the existing independent watchdog.
+The ETF-only paper_experiment worker was stopped; do not launch it concurrently.
+See docs/intraday-execution.md. config/intraday_execution.json is authorized.
+Execution report: reports/intraday_execution.json, ledger intraday_execution_report.
+Worker logs: logs/intraday_execution_v2.log and intraday_execution_v2_error.log.
+Scanner logs: logs/intraday_execution_scan.log. Existing ETF brackets remain.
+Runtime confirmed enabled and waiting for a qualifying signal, not halted.
+Suite: 327 tests, risk statement and branch coverage 100%. No performance claim.
+
+Execution policy v2 adds relative-volume priority, completed-bar participation
+cap, spread/stop-risk check, and sampled-peak-based 20-minute stall exits. Latest
+logs: logs/intraday_policy_v2.log / intraday_policy_v2_error.log; scanner uses
+logs/intraday_policy_v2_scan.log. Frozen IEX comparison: v1 zero trades, v2 two
+trades and -0.01885% over 41 sessions. This is not evidence of improved returns.

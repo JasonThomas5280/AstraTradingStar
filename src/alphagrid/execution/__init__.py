@@ -1,1 +1,1 @@
-"""Read-only paper diagnostics. No order submission or live endpoint support."""
+"""Paper-only broker execution and diagnostics. Live endpoints are unsupported."""
