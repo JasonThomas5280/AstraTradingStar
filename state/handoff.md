@@ -4,7 +4,8 @@ Branch: codex/autonomous-paper-service. Paper execution, supervised worker,
 independent watchdog, ledger/reconciliation, strategy research, and tests implemented.
 
 Actual account authentication succeeded; balances are kept in local runtime state.
-At verification there were no positions or open orders. No trades placed by this task.
+At verification there were no positions or open orders. Flat initialization and a
+read-only reconciliation cycle succeeded. No trades placed by this task.
 Credentials are never stored in the repository. Use rotated environment credentials.
 
 Requested target:10% cash /90% invested, constrained by risk and qualified signals.

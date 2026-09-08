@@ -102,3 +102,34 @@ def test_real_indicators_confirm_setup_and_liquidity_gate():
     assert result.symbol == "SPY"
     assert signal("SPY",[replace(b, volume=b.volume/10) for b in history]) is None
     assert signal("SPY",history[:-1]+[replace(history[-1],volume=700_000)]) is None
+
+
+def test_research_sizes_at_rounded_limit_with_service_macro_and_rounded_exits(monkeypatch):
+    from dataclasses import replace
+    history = bars()
+    history[51] = Bar(history[51].date,100,105,99,100,1_000_000)
+    monkeypatch.setattr(backtest,"signal", lambda s,p: replace(candidate(p[-1]), stop=98.004,
+                        max_entry=100.109) if len(p)==51 else None)
+    result = backtest.run_backtest("SPY",history)
+    trade = result["replay"]["trades"][0]
+    # floor(100000*.0025*.5/(100.10-98.01)) =59, using limit not improved fill.
+    assert trade["quantity"] == 59
+    assert trade["reason"] == "target"
+    assert trade["exit"] == pytest.approx((100.10+2*(100.10-98.01))*(1-.0002))
+    assert result["sizing_assumptions"]["macro_multiplier"] == .5
+
+
+@pytest.mark.parametrize("mode,diagnostic", [("no_touch","entry_not_triggered"),
+                        ("gap","entry_gap_or_limit_rejections"),("small_account","zero_size_rejections")])
+def test_entry_rejection_diagnostics(monkeypatch, mode, diagnostic):
+    history = bars()
+    if mode == "no_touch":
+        history[51] = Bar(history[51].date,99,100,99,100,1_000_000)
+    elif mode == "gap":
+        history[51] = Bar(history[51].date,101,102,100,101,1_000_000)
+    monkeypatch.setattr(backtest,"signal",lambda s,p: candidate(p[-1]) if len(p)==51 else None)
+    replay = backtest.run_backtest("SPY",history,initial_equity=100 if mode=="small_account" else 100000)["replay"]
+    assert replay["signal_count"] == 1
+    assert replay[diagnostic] == 1
+    assert sum(replay[k] for k in ("entry_not_triggered","entry_gap_or_limit_rejections","zero_size_rejections")) == 1
+    assert replay["trade_count"] == 0

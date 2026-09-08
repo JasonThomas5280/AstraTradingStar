@@ -3,9 +3,11 @@ import csv
 import hashlib
 import json
 from datetime import date
+from decimal import Decimal as D, ROUND_DOWN, ROUND_UP
 import math
 from pathlib import Path
 from alphagrid.strategies.trend_pullback import Bar, signal, validate_bars, trailing_stop
+from alphagrid.risk.position_sizer import size_long
 
 
 def load_csv(path: str | Path) -> list[Bar]:
@@ -22,18 +24,35 @@ def _window(symbol, bars, start, end, equity, cost, slip):
     trades = []
     peak = equity
     drawdown = 0.0
+    diagnostics = dict(signal_count=0, entry_not_triggered=0,
+                       entry_gap_or_limit_rejections=0, zero_size_rejections=0)
     for i in range(start, end):
         bar = bars[i]
         # Signal is evaluated only on history ending at yesterday's close.
         candidate = signal(symbol, bars[:i]) if position is None else None
-        if candidate and bar.high > candidate.entry and bar.open <= candidate.max_entry:
+        if candidate:
+            diagnostics["signal_count"] += 1
+            limit = D(str(candidate.max_entry)).quantize(D(".01"), rounding=ROUND_DOWN)
+            stop = D(str(candidate.stop)).quantize(D(".01"), rounding=ROUND_UP)
+            target = limit + 2 * (limit-stop)
             entry = max(bar.open, candidate.entry) * (1 + slip)
-            # Risk at most 0.25% initial capital; 10% allocation; no leverage.
-            quantity = max(0, math.floor(min(initial * .0025 / (entry - candidate.stop),
-                                            cash * .1 / (entry * (1 + cost))))) if entry <= candidate.max_entry else 0
-            if quantity:
-                cash -= quantity * entry * (1 + cost)
-                position = (quantity, entry, candidate.stop, candidate.target, bar.date, i)
+            if bar.high <= candidate.entry:
+                diagnostics["entry_not_triggered"] += 1
+            elif bar.open > float(limit) or entry > float(limit):
+                diagnostics["entry_gap_or_limit_rejections"] += 1
+            else:
+                # Same initial service risk budget: current equity, 0.25% risk,
+                # permanent 0.5 macro multiplier,15% name cap,90% sleeve ceiling.
+                # Quantity uses worst-case rounded limit rather than improved fill.
+                quantity = int(size_long(D(str(equity)), limit, stop,
+                               risk_fraction=".0025", multiplier=".5", notional_fraction=".15")) if stop < limit else 0
+                available = min(equity * .9, cash)
+                quantity = min(quantity, max(0, math.floor(available / (float(limit) * (1+cost)))))
+                if quantity:
+                    cash -= quantity * entry * (1 + cost)
+                    position = (quantity, entry, float(stop), float(target), bar.date, i)
+                else:
+                    diagnostics["zero_size_rejections"] += 1
         if position:
             quantity, entry, stop, target, entry_date, entry_index = position
             reason = None
@@ -57,7 +76,8 @@ def _window(symbol, bars, start, end, equity, cost, slip):
                                "pnl": pnl, "reason": reason})
                 position = None
             else:
-                position = (quantity, entry, trailing_stop(bars[:i+1], entry, stop),
+                tightened = D(str(trailing_stop(bars[:i+1], entry, stop))).quantize(D(".01"), rounding=ROUND_DOWN)
+                position = (quantity, entry, float(tightened),
                             target, entry_date, entry_index)
         equity = cash + (position[0] * bar.close if position else 0)
         peak = max(peak, equity)
@@ -69,7 +89,7 @@ def _window(symbol, bars, start, end, equity, cost, slip):
             "max_close_drawdown": drawdown, "trade_count": len(trades),
             "expectancy_dollars": sum(t["pnl"] for t in trades)/len(trades) if trades else None,
             "win_rate": sum(t["pnl"] > 0 for t in trades)/len(trades) if trades else None,
-            "trades": trades}
+            "trades": trades, **diagnostics}
 
 
 def run_backtest(symbol, bars, *, initial_equity=100000, cost_bps=1, slippage_bps=2):
@@ -93,12 +113,21 @@ def run_backtest(symbol, bars, *, initial_equity=100000, cost_bps=1, slippage_bp
                 separators=(",", ":")).encode()).hexdigest(),
             "deployment_authorized": False, "data_provenance": "user-supplied; authenticity not independently verified",
             "cost_bps_per_side": cost_bps, "slippage_bps_per_side": slippage_bps,
+            "sizing_assumptions": {"risk_fraction": .0025, "macro_multiplier": .5,
+                                   "name_notional_cap": .15, "sleeve_ceiling": .9,
+                                   "equity_basis": "current marked equity", "quantity_step": 1,
+                                   "entry_limit": "max_entry rounded down to cents",
+                                   "initial_stop": "candidate stop rounded up to cents",
+                                   "target": "rounded limit + 2*(rounded limit-rounded stop)",
+                                   "sizing_price": "rounded limit; costs additionally bounded by cash"},
             "development": _window(symbol, bars, 51, split, *args),
             "holdout": _window(symbol, bars, split, len(bars), *args),
             "replay": _window(symbol, bars, 51, len(bars), *args),
             "limitations": ["Daily OHLC cannot verify intraday portfolio hard limits or execution sequencing.",
                             "No deployment certificate; no claim that data are authentic or results will persist.",
                             "Single symbol; no portfolio correlation, partial fills, halts, spread or market impact model.",
+                            "Matches initial service sizing only; intraday loss scaling, PDT/cooldown and live risk gates are not simulated.",
+                            "Signal diagnostics count only flat-position sessions; rejections are mutually exclusive, trigger check first.",
                             "Time exits and window liquidation approximate close fills plus slippage; actual fills may differ.",
                             "No parameter optimization; input history must consistently handle corporate actions.",
                             "Entry valid next session only, capped at trigger+0.1%; strict price penetration models fills but does not prove them.",
