@@ -70,3 +70,14 @@ Scanner repair: whole-word instrument exclusions and separate signal/quote
 diagnostics, tested with 315 passing tests and 100% risk coverage. Only scanner
 restarted; logs/intraday_diagnostics.log records its current output. Do not treat
 these engineering repairs as proven profitability improvements.
+
+## Mixed intraday paper worker enabled
+Operator explicitly requested intraday execution. The sole worker is now
+alphagrid.intraday_execution, which adopts the existing independent watchdog.
+The ETF-only paper_experiment worker was stopped; do not launch it concurrently.
+See docs/intraday-execution.md. config/intraday_execution.json is authorized.
+Execution report: reports/intraday_execution.json, ledger intraday_execution_report.
+Worker logs: logs/intraday_execution_v2.log and intraday_execution_v2_error.log.
+Scanner logs: logs/intraday_execution_scan.log. Existing ETF brackets remain.
+Runtime confirmed enabled and waiting for a qualifying signal, not halted.
+Suite: 327 tests, risk statement and branch coverage 100%. No performance claim.

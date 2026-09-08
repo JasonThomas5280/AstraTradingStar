@@ -32,6 +32,9 @@ def entry_checks(order, account, positions):
 
 
 class MomentumEngine(Engine):
+    def intraday_step(self, account, positions, session):
+        return None
+
     def settings(self):
         cfg=json.loads((self.root/'config/paper_experiment.json').read_text())
         if (cfg.get('mode')!='paper' or cfg.get('operator_authorized') is not True
@@ -128,11 +131,14 @@ class MomentumEngine(Engine):
         held={p['symbol'] for p in positions}
         for item in self.ledger.active_intents():
             o=item['snapshot']
-            if item['symbol'] in held and o.get('filled_at'):
+            if item['symbol'] in held and o.get('filled_at') and not item['client_id'].startswith('ag-i-'):
                 entered=timestamp(o['filled_at']).date()
                 if sum(b.date>=entered for b in histories[item['symbol']])+1>=20:
                     self.time_exit(item)
                     return dict(report,status='time_exit_submitted')
+        intraday=self.intraday_step(account,positions,session)
+        if intraday is not None:
+            return dict(report,**intraday)
         if D(account['cash'])<=D('250') or session.hour<10 or (session.hour,session.minute)>=(15,30):
             return report
         eligible=rank(histories)

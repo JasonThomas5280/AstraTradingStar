@@ -114,3 +114,11 @@ and the same breakout/stop rules. This floor is not a validated conversion from
 consolidated volume. Attach timestamped recent Alpaca news without treating a
 headline as verified positive alpha. Keep the previous SIP diagnostic distinct;
 its results do not validate this variant. Restart only the read-only scanner.
+
+#### Explicit intraday execution authorization
+The operator now requests "turn on intraday trading." Implement and deploy the
+single mixed paper worker described in docs/intraday-execution.md, replacing
+the ETF-only worker and preserving its independent watchdog. This supersedes
+the earlier observation-only deployment restriction for this paper strategy.
+Validate actual fresh signals before entries, permit one ETF rotation when a
+qualified signal needs capacity, retain all monetary and bracket protections.

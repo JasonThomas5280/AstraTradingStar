@@ -38,6 +38,12 @@ def scan(root,broker=None):
              'status':'observing','daily_portfolio_return_target':.10,'orders_submitted':0,
              'execution_enabled':False,'strategy':cfg.get('strategy','intraday_continuation_5m_v1'),'candidates':[]}
     state=Ledger(root/'state/runtime.db')
+    execution=state.get('intraday_execution_report') or {}
+    current['scanner_read_only']=True
+    current['execution_enabled']=(execution.get('execution_enabled') is True
+        and state.get('halted',True) is False
+        and 0 <= (utcnow()-timestamp(execution['reported_at'])).total_seconds() <= 90)
+    current['execution_status']=execution.get('status','not_running')
     report=state.get('experimental_report') or {}
     if state.get('start_equity') and report.get('equity'):
         current['last_reported_portfolio_return']=str(D(report['equity'])/D(state.get('start_equity'))-1)
