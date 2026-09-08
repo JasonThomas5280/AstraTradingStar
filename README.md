@@ -117,3 +117,8 @@ broker-hosted brackets, and retains the independent watchdog. This experimental
 authorization does not qualify the original pullback strategy or enable live money.
 Its retrospective final-year test returned 11.70% versus 18.15% for SPY price
 return; no claim of maximum profitability or benchmark outperformance is made.
+
+The [intraday stock research scanner](docs/intraday-research.md) tracks the later
+10% daily portfolio-return research target, captures prospective mover snapshots,
+and tests frozen continuation rules. It is read-only; delayed signals cannot
+trigger trades and do not change existing ETF positions.

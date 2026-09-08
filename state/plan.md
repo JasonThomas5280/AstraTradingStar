@@ -91,3 +91,18 @@ watchdog, fresh quotes, durable intent and reconciliation. Missing protection,
 unknown fills or risk breach still halt. Resolve the completed drill halt only
 after checking its postmortem and reconciling the flat account. Run tests before
 paper submission. No secret persistence. No claim of live-money authorization.
+
+#### P 3 revision: Intraday stock momentum and daily return objective
+Operator sets a 10% daily portfolio-return research target, acknowledging not
+every day will reach it. Add a stock-mover scanner and frozen five-minute
+continuation strategy: regular-session listed common shares, >=10% gain versus
+prior close, >=$1 price, >=1M session shares, above session VWAP, close beyond
+the prior three-bar high with >=1.5x preceding six-bar median volume. Require
+fresh completed bars and <=0.5% quoted spread. Stop at prior three-bar low,
+0.5%-5% entry distance, target 3R, exit after45 minutes or15:50 ET. Size within
+existing cash and monetary risk limits. Measure actual daily portfolio return,
+10% hit rate, expectancy after costs, drawdown, turnover and benchmark return.
+Record prospective scanner snapshots for later unbiased universe replay; label
+retrospective tests of today's movers as selection-biased diagnostics. Never
+present today's percentage gain as an achievable entry return. Keep current
+positions protected while building and verifying the intraday strategy.

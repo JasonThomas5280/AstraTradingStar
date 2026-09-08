@@ -52,7 +52,8 @@ class PaperBroker:
 
     def _request(self, method, path, *, query=None, payload=None, data=False, timeout=10):
         # Private dispatch is still allowlisted, so malformed paths cannot send secrets elsewhere.
-        allowed = ((data and method == "GET" and re.fullmatch(
+        allowed = ((data and method == 'GET' and path == '/v1beta1/screener/stocks/movers') or
+            (data and method == "GET" and re.fullmatch(
             r"/v2/stocks/(bars|[A-Z][A-Z0-9.\-]{0,14}/quotes/latest)", path)) or
             (not data and method == "GET" and re.fullmatch(
                 r"/v2/(account|clock|calendar|positions|orders|orders:by_client_order_id|orders/[A-Za-z0-9_\-]{1,48}|assets/[A-Z][A-Z0-9.\-]{0,14})", path)) or
@@ -94,6 +95,35 @@ class PaperBroker:
 
     def account(self):
         return self._request("GET", "/v2/account")
+
+    def movers(self, top=50):
+        if type(top) is not int or not 1 <= top <= 50:
+            raise BrokerError('invalid_mover_count')
+        result = self._request('GET', '/v1beta1/screener/stocks/movers', data=True, query={'top':top})
+        if not isinstance(result, dict) or not isinstance(result.get('gainers'), list) or not result.get('last_updated'):
+            raise BrokerError('invalid_movers')
+        return result
+
+    def intraday_bars(self, symbol, start, end):
+        symbol = _identifier(symbol, True)
+        query = {'symbols':symbol,'start':str(start),'end':str(end),'timeframe':'5Min',
+                 'feed':'sip','adjustment':'split','sort':'asc','limit':10000}
+        result, seen = [], set()
+        for _ in range(20):
+            page = self._request('GET','/v2/stocks/bars',data=True,query=query)
+            if not isinstance(page,dict) or not isinstance(page.get('bars'),dict):
+                raise BrokerError('invalid_intraday_bars')
+            rows=page['bars'].get(symbol,[])
+            if not isinstance(rows,list):
+                raise BrokerError('invalid_intraday_bars')
+            result.extend(rows)
+            token=page.get('next_page_token')
+            if not token:
+                return result
+            if not isinstance(token,str) or token in seen:
+                raise BrokerError('invalid_pagination')
+            seen.add(token);query['page_token']=token
+        raise BrokerError('incomplete_intraday_bars')
 
     def clock(self):
         return self._request("GET", "/v2/clock")

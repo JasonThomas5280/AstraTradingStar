@@ -46,3 +46,14 @@ reconciled, and holding watchdog ownership. Actual earlier recovery fills are
 journaled; postmortem_momentum_2026-09-08.md stays local. Full suite:295 tests.
 Research: final252-session experiment return11.70%, SPY price return18.15%,
 167 trades, max closing drawdown5.79%. Experimental, not proven outperformance.
+
+## Intraday research target revision
+Operator targets10% daily portfolio return. config/intraday_research.json and
+docs/intraday-research.md define a read-only stock continuation scanner and
+historical diagnostic. New recent SIP bars are forbidden by current entitlement;
+delayed SIP and real-time IEX are accessible. No silent feed substitution.
+Scanner captures prospective mover snapshots and marks delayed candidates
+ineligible. First current-universe diagnostic:41 sessions,2 trades,-0.74%,zero
+10% days, selection-biased; not a qualification or a basis for claimed profits.
+Current ETF worker/watchdog remain separate. Latest scanner state lives in
+reports/intraday_latest.json and its process/log files stay local.
