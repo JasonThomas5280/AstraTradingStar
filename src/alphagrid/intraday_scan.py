@@ -18,7 +18,7 @@ def common_equity(asset):
     return (asset.get('tradable') is True and asset.get('status')=='active'
             and asset.get('class')=='us_equity'
             and asset.get('exchange') in ('NYSE','NASDAQ','ARCA','AMEX','BATS')
-            and not any(word in name for word in ('warrant','right','unit','preferred','etf','fund','trust','leveraged','inverse')))
+            and not re.search(r'\b(?:warrants?|rights?|units?|preferred|etfs?|funds?|trusts?|leveraged|inverse)\b',name))
 
 
 def scan(root,broker=None):
@@ -79,19 +79,26 @@ def scan(root,broker=None):
                     evaluation_time=max(completed)+timedelta(seconds=1)
             row.update(evaluate(raw,prior[-1]['c'],evaluation_time,
                 minimum_session_volume=cfg.get('minimum_feed_session_volume',1000000)))
+            row['signal_eligible']=row['eligible']
+            row['signal_reason']=row['reason']
             if delayed:
                 row['historical_signal']=row.get('eligible',False)
                 row['historical_reason']=row.get('reason')
                 row.update(eligible=False,reason='realtime_sip_access_required')
             quote=b.quote(symbol);quote_age=(utcnow()-timestamp(quote['t'])).total_seconds()
+            row['quote_age_seconds']=quote_age
+            row['quote_reason']='passed'
             bid,ask=D(str(quote['bp'])),D(str(quote['ap']))
             if not bid.is_finite() or not ask.is_finite() or not 0<bid<=ask or not 0<=quote_age<=30:
+                row['quote_reason']='stale_or_invalid_quote'
                 row.update(eligible=False,reason='stale_or_invalid_quote')
             else:
                 row['spread_fraction']=str((ask-bid)/ask)
                 if (ask-bid)/ask>D('.005'):
+                    row['quote_reason']='wide_spread'
                     row.update(eligible=False,reason='wide_spread')
                 elif row.get('eligible') and not D(row['entry_limit'])*D('.995')<=ask<=D(row['entry_limit']):
+                    row['quote_reason']='entry_price_moved'
                     row.update(eligible=False,reason='entry_price_moved')
         except BrokerError as exc:
             row.update(eligible=False,reason=exc.code,http_status=exc.status)

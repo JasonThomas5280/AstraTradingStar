@@ -9,6 +9,12 @@ separate unvalidated research variant. It does not require recent SIP access.
 The earlier SIP variant and its diagnostic below are retained for comparison;
 those returns do not apply to the IEX variant. Both remain observation-only.
 
+Scanner diagnostics preserve signal_eligible and signal_reason separately from
+quote_reason and quote_age_seconds. Final eligibility still requires all checks;
+a wide quote cannot conceal whether the underlying signal passed. Instrument
+name filtering matches whole words, so United/Wright/Community company names
+are not excluded merely because they contain unit/right substrings.
+
 The operator's objective is now 10% daily portfolio return, with explicit
 acknowledgment that not every day will reach it. This is a measured research
 target, not a guarantee, accomplished result, or permission to report a stock's

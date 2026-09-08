@@ -65,3 +65,8 @@ variant, not a silent substitution for SIP. News headlines are not verified
 catalysts. Matching IEX history replay: 41 sessions, zero trades, 0% return,
 zero 10% days. Current-universe selection bias remains. Intraday execution stays
 disabled; existing ETF worker and watchdog continue separately. Suite: 311 tests.
+
+Scanner repair: whole-word instrument exclusions and separate signal/quote
+diagnostics, tested with 315 passing tests and 100% risk coverage. Only scanner
+restarted; logs/intraday_diagnostics.log records its current output. Do not treat
+these engineering repairs as proven profitability improvements.

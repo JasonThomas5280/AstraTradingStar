@@ -49,6 +49,33 @@ def test_non_common_instruments_excluded(name):
     assert not common_equity({'name':name,'tradable':True,'status':'active','class':'us_equity','exchange':'NASDAQ'})
 
 
+@pytest.mark.parametrize('name',['United Airlines Holdings Common Stock','Wright Medical Common Stock','Community Bancorp Common Stock'])
+def test_ordinary_company_names_are_not_instrument_types(name):
+    assert common_equity({'name':name,'tradable':True,'status':'active','class':'us_equity','exchange':'NASDAQ'})
+
+
+def test_wide_quote_preserves_detected_signal(tmp_path,monkeypatch):
+    from alphagrid import intraday_scan as scanner
+    from alphagrid.strategies.intraday import ET
+    from unittest.mock import Mock
+    raw,now=sample()
+    monkeypatch.setattr(scanner,'utcnow',lambda:now)
+    monkeypatch.setattr(scanner,'clock_time',lambda c:now.astimezone(ET))
+    b=Mock();b.clock.return_value={'is_open':True}
+    b.movers.return_value={'last_updated':now.isoformat(),'gainers':[{'symbol':'ABC','percent_change':30,'price':10.4}]}
+    b.asset.return_value={'name':'United Common Stock','class':'us_equity','exchange':'NASDAQ','tradable':True,'status':'active'}
+    b.intraday_bars.return_value=raw
+    b.bars.return_value=[{'t':'2026-09-04T04:00:00Z','c':8}]
+    b.quote.return_value={'t':now.isoformat(),'bp':10,'ap':10.5}
+    result=scanner.scan(tmp_path,b);row=result['candidates'][0]
+    assert row['signal_eligible'] is True
+    assert row['signal_reason']=='confirmed_continuation'
+    assert row['quote_reason']=='wide_spread'
+    assert row['eligible'] is False
+    assert result['execution_enabled'] is False
+    b.submit_bracket.assert_not_called()
+
+
 def test_bar_pagination_and_mover_validation(monkeypatch):
     b=PaperBroker();calls=[]
     pages=iter([{'bars':{'ABC':[{'t':'one'}]},'next_page_token':'next'}, {'bars':{'ABC':[{'t':'two'}]},'next_page_token':None}])
