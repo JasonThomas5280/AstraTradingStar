@@ -1,0 +1,9 @@
+# Declarative deployment intent. No executable trading loop exists yet.
+mode: paper
+trading_enabled: false
+live_trading_authorized: false
+paper_endpoint: https://paper-api.alpaca.markets
+enabled_strategies: []
+phase_one_candidate: '6.1'
+enabled_symbols: []
+restart_requires_postmortem: true

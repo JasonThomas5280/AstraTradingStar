@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astratradingstar"
+version = "0.1.0"
+description = "AlphaGrid paper-only risk foundation; trading disabled"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1", "hypothesis==6.167.1", "coverage==7.16.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["alphagrid.risk"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 95

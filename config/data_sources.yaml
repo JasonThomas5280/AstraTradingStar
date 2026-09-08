@@ -1,0 +1,15 @@
+# Missing source credentials or market data are blockers, never synthesized.
+alpaca:
+  credentials: environment
+  key_variable: APCA_API_KEY_ID
+  secret_variable: APCA_API_SECRET_KEY
+secondary_news:
+  provider: null
+  configured: false
+macro_calendar:
+  configured: false
+earnings_calendar:
+  configured: false
+correlation_history:
+  minimum_return_observations: 60
+  configured: false
