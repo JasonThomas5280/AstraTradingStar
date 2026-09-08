@@ -52,7 +52,7 @@ class PaperBroker:
 
     def _request(self, method, path, *, query=None, payload=None, data=False, timeout=10):
         # Private dispatch is still allowlisted, so malformed paths cannot send secrets elsewhere.
-        allowed = ((data and method == 'GET' and path == '/v1beta1/screener/stocks/movers') or
+        allowed = ((data and method == 'GET' and path in ('/v1beta1/screener/stocks/movers','/v1beta1/news')) or
             (data and method == "GET" and re.fullmatch(
             r"/v2/stocks/(bars|[A-Z][A-Z0-9.\-]{0,14}/quotes/latest)", path)) or
             (not data and method == "GET" and re.fullmatch(
@@ -104,10 +104,19 @@ class PaperBroker:
             raise BrokerError('invalid_movers')
         return result
 
-    def intraday_bars(self, symbol, start, end):
+    def news(self, symbol, start):
+        result=self._request('GET','/v1beta1/news',data=True,query={
+            'symbols':_identifier(symbol,True),'start':str(start),'limit':3,'sort':'desc','include_content':'false'})
+        if not isinstance(result,dict) or not isinstance(result.get('news'),list):
+            raise BrokerError('invalid_news')
+        return result['news']
+
+    def intraday_bars(self, symbol, start, end, *, feed='sip'):
         symbol = _identifier(symbol, True)
+        if feed not in ('sip','iex'):
+            raise BrokerError('invalid_feed')
         query = {'symbols':symbol,'start':str(start),'end':str(end),'timeframe':'5Min',
-                 'feed':'sip','adjustment':'split','sort':'asc','limit':10000}
+                 'feed':feed,'adjustment':'split','sort':'asc','limit':10000}
         result, seen = [], set()
         for _ in range(20):
             page = self._request('GET','/v2/stocks/bars',data=True,query=query)

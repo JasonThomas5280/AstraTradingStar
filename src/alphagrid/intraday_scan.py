@@ -23,6 +23,11 @@ def common_equity(asset):
 
 def scan(root,broker=None):
     root=Path(root);b=broker or PaperBroker();now=utcnow();clock=b.clock()
+    cfgpath=root/'config/intraday_research.json'
+    cfg=json.loads(cfgpath.read_text()) if cfgpath.exists() else {}
+    feed=cfg.get('feed','sip')
+    if feed not in ('sip','iex'):
+        raise ValueError('invalid_feed')
     session=clock_time(clock)
     if not clock['is_open']:
         return {'at':now.isoformat(),'status':'market_closed','candidates':[]}
@@ -31,7 +36,7 @@ def scan(root,broker=None):
         raise ValueError('stale_mover_feed')
     current={'at':now.isoformat(),'mover_asof':movers['last_updated'],
              'status':'observing','daily_portfolio_return_target':.10,'orders_submitted':0,
-             'execution_enabled':False,'candidates':[]}
+             'execution_enabled':False,'strategy':cfg.get('strategy','intraday_continuation_5m_v1'),'candidates':[]}
     state=Ledger(root/'state/runtime.db')
     report=state.get('experimental_report') or {}
     if state.get('start_equity') and report.get('equity'):
@@ -50,14 +55,14 @@ def scan(root,broker=None):
             cutoff=now
             delayed=False
             try:
-                raw=b.intraday_bars(symbol,start.isoformat(),cutoff.isoformat())
+                raw=b.intraday_bars(symbol,start.isoformat(),cutoff.isoformat(),feed=feed)
             except BrokerError as exc:
-                if exc.status!=403:
+                if exc.status!=403 or feed!='sip':
                     raise
                 cutoff=now-timedelta(minutes=16)
                 raw=b.intraday_bars(symbol,start.isoformat(),cutoff.isoformat())
                 delayed=True
-            row['feed']='sip_delayed' if delayed else 'sip'
+            row['feed']='sip_delayed' if delayed else feed
             row['data_cutoff']=cutoff.isoformat()
             (root/'data').mkdir(exist_ok=True)
             (root/'data'/f'intraday_{symbol}_{session.date()}.json').write_text(json.dumps(raw))
@@ -72,7 +77,8 @@ def scan(root,broker=None):
                 completed=[timestamp(r['t'])+timedelta(minutes=5) for r in raw if timestamp(r['t'])+timedelta(minutes=5)<=cutoff]
                 if completed:
                     evaluation_time=max(completed)+timedelta(seconds=1)
-            row.update(evaluate(raw,prior[-1]['c'],evaluation_time))
+            row.update(evaluate(raw,prior[-1]['c'],evaluation_time,
+                minimum_session_volume=cfg.get('minimum_feed_session_volume',1000000)))
             if delayed:
                 row['historical_signal']=row.get('eligible',False)
                 row['historical_reason']=row.get('reason')
@@ -91,6 +97,15 @@ def scan(root,broker=None):
             row.update(eligible=False,reason=exc.code,http_status=exc.status)
         except (ValueError,KeyError,ArithmeticError):
             row.update(eligible=False,reason='invalid_or_missing_data')
+        if cfg.get('attach_news') is True:
+            try:
+                items=b.news(symbol,(now-timedelta(hours=24)).isoformat())
+                row['news']=[{k:n.get(k) for k in ('id','headline','created_at','updated_at','source','url')}
+                             for n in items if n.get('created_at') and now-timedelta(hours=24)<=timestamp(n['created_at'])<=utcnow()]
+                row['news_first_observed_at']=utcnow().isoformat()
+                row['catalyst_verified']=False
+            except (BrokerError,ValueError,KeyError):
+                row['news_status']='unavailable'
         current['candidates'].append(row)
     reports=root/'reports';reports.mkdir(exist_ok=True)
     (reports/'intraday_latest.json').write_text(json.dumps(current,indent=2))

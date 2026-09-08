@@ -106,3 +106,11 @@ Record prospective scanner snapshots for later unbiased universe replay; label
 retrospective tests of today's movers as selection-biased diagnostics. Never
 present today's percentage gain as an achievable entry return. Keep current
 positions protected while building and verifying the intraday strategy.
+
+#### Available-feed revision
+Use an explicitly separate IEX/news observation variant with live IEX five-minute
+bars, IEX VWAP and relative volume, a provisional10,000-share IEX session floor,
+and the same breakout/stop rules. This floor is not a validated conversion from
+consolidated volume. Attach timestamped recent Alpaca news without treating a
+headline as verified positive alpha. Keep the previous SIP diagnostic distinct;
+its results do not validate this variant. Restart only the read-only scanner.

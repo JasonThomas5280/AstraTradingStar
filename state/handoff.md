@@ -57,3 +57,11 @@ ineligible. First current-universe diagnostic:41 sessions,2 trades,-0.74%,zero
 10% days, selection-biased; not a qualification or a basis for claimed profits.
 Current ETF worker/watchdog remain separate. Latest scanner state lives in
 reports/intraday_latest.json and its process/log files stay local.
+
+## Explicit IEX/news research variant
+The scanner now uses live IEX with its own provisional 10,000-share session
+volume floor and attaches accessible Alpaca news. This is a deliberate separate
+variant, not a silent substitution for SIP. News headlines are not verified
+catalysts. Matching IEX history replay: 41 sessions, zero trades, 0% return,
+zero 10% days. Current-universe selection bias remains. Intraday execution stays
+disabled; existing ETF worker and watchdog continue separately. Suite: 311 tests.

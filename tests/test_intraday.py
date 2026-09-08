@@ -82,3 +82,23 @@ def test_delayed_positive_signal_cannot_become_executable(tmp_path,monkeypatch):
     assert row['reason']=='realtime_sip_access_required'
     assert result['orders_submitted']==0 and result['execution_enabled'] is False
     b.submit_bracket.assert_not_called()
+
+
+def test_iex_volume_variant_is_explicit_and_not_applied_to_sip():
+    raw,now=sample()
+    for r in raw:r['v']/=100
+    assert evaluate(raw,8,now)['eligible'] is False
+    assert evaluate(raw,8,now,minimum_session_volume=10000)['eligible'] is True
+
+
+def test_read_only_feed_and_news_dispatch(monkeypatch):
+    b=PaperBroker();calls=[]
+    def request(method,path,**kwargs):
+        calls.append((method,path,kwargs))
+        return {'news':[]} if path.endswith('/news') else {'bars':{},'next_page_token':None}
+    monkeypatch.setattr(b,'_request',request)
+    b.intraday_bars('ABC','start','end',feed='iex')
+    assert calls[-1][2]['query']['feed']=='iex'
+    assert b.news('ABC','start')==[]
+    assert all(r[0]=='GET' for r in calls)
+    with pytest.raises(BrokerError):b.intraday_bars('ABC','start','end',feed='unknown')

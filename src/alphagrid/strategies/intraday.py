@@ -26,7 +26,8 @@ def regular_bars(raw, asof):
     return bars
 
 
-def evaluate(raw, previous_close, asof):
+def evaluate(raw, previous_close, asof, *, minimum_session_volume=1000000):
+    minimum_session_volume=number(minimum_session_volume,positive=True)
     bars=regular_bars(raw,asof)
     today=asof.astimezone(ET).date()
     bars=[b for b in bars if b['t'].astimezone(ET).date()==today]
@@ -40,7 +41,7 @@ def evaluate(raw, previous_close, asof):
     close=number(previous_close,positive=True)
     gain=last['c']/close-1
     volume=sum(b['v'] for b in bars)
-    if last['c']<1 or gain<D('.10') or volume<1_000_000:
+    if last['c']<1 or gain<D('.10') or volume<minimum_session_volume:
         return {'eligible':False,'reason':'price_gain_or_volume','gain':str(gain),'session_volume':str(volume)}
     vwap=sum((b['h']+b['l']+b['c'])/3*b['v'] for b in bars)/volume
     level=max(b['h'] for b in bars[-4:-1])
