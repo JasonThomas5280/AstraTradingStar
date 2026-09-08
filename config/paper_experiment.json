@@ -1,0 +1,15 @@
+{
+  "strategy": "diversified_momentum_paper_v1",
+  "mode": "paper",
+  "operator_authorized": true,
+  "cash_ceiling": "250",
+  "cash_target": "150",
+  "max_names": 12,
+  "max_name_fraction": "0.14",
+  "max_stop_risk_fraction": "0.0075",
+  "stop_fraction": "0.05",
+  "target_r_multiple": "2",
+  "symbols": ["XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY", "VEA", "VWO", "IAU", "VGIT"],
+  "qualification": "experimental; no established outperformance",
+  "mandate_revision": "Operator explicitly authorizes paper allocation now. This separate experiment replaces pullback signal and predeployment profitability gates, the 90% sleeve ceiling, and correlation-clique entry exclusion. Retains cash-only long positions, 12-name and 15% hard name caps, 0.75% planned position stop risk, broker stops, durable order records and independent daily-loss watchdog. Does not enable live trading or certify profitability."
+}

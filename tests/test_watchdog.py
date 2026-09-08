@@ -159,3 +159,12 @@ def test_supervisor_startup_exception_latches_halt(rig, monkeypatch):
     assert service.supervise(root) == 1
     assert state['halted']
     assert state['watchdog_heartbeat'] is None
+
+
+@pytest.mark.parametrize('age,expected_halt', [(5,False),(16,True)])
+def test_partial_fill_has_bounded_settlement_window(rig,age,expected_halt):
+    root,engine,breaker,state,_=rig
+    intent(engine,filled='1',stops=False)
+    engine.ledger.active_intents.return_value[0]['created_at']=(service.utcnow()-timedelta(seconds=age)).isoformat()
+    service.watchdog(root,once=True)
+    assert state['halted'] is expected_halt

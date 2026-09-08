@@ -30,6 +30,21 @@ TERMINAL = {"filled", "canceled", "expired", "rejected", "replaced"}
 ACTIVE_STOPS = {"new", "accepted"}
 
 
+def protective_stops(order):
+    """Alpaca keeps an armed bracket stop HELD while its take-profit is NEW.
+
+    Do not accept two held legs or a partial/unfilled parent as armed protection.
+    Alpaca staff description: https://forum.alpaca.markets/t/3697/2
+    """
+    legs = order.get('legs') or []
+    armed_bracket = (order.get('status') == 'filled'
+                     and number(order['filled_qty']) == number(order['qty'], positive=True)
+                     and any(l.get('type') == 'limit' and l.get('status') in ACTIVE_STOPS
+                             and l.get('side') == 'sell' for l in legs))
+    return [l for l in legs if l.get('type') == 'stop' and
+            (l.get('status') in ACTIVE_STOPS or (armed_bracket and l.get('status') == 'held'))]
+
+
 def config(root):
     # JSON is the deliberately restricted YAML subset accepted for authorization.
     cfg = json.loads((Path(root) / "config/authorization.yaml").read_text())
@@ -111,7 +126,7 @@ class Engine:
         session = clock_time(self.broker.clock()).date().isoformat()
         self.ledger.initialize(account, self.broker.positions(), self.broker.open_orders(), session)
 
-    def refresh(self):
+    def refresh(self, *, allow_partial_settlement=False):
         # Resolve every prior intent before any account comparison or fresh entry.
         for item in self.ledger.exits():
             if item["snapshot"] is None:
@@ -144,6 +159,10 @@ class Engine:
             filled, qty = number(order["filled_qty"]), number(order["qty"], positive=True)
             sold = sum(number(leg["filled_qty"]) for leg in order["legs"])
             if 0 < filled < qty:
+                # A short, bounded settlement window is allowed only when the
+                # caller blocks new entries until this parent fully settles.
+                if allow_partial_settlement and 0 <= (utcnow()-timestamp(item['created_at'])).total_seconds() < 15:
+                    continue
                 raise StateError("partial_entry_requires_flatten")
             if filled > sold:
                 exits = [e for e in self.ledger.exits() if e["parent_id"] == item["client_id"] and e["snapshot"]]
@@ -152,7 +171,7 @@ class Engine:
                     sold += number(exit_order["filled_qty"])
                     if filled <= sold or exit_order["status"] not in TERMINAL:
                         continue
-                stops = [leg for leg in order["legs"] if leg["type"] == "stop" and leg["status"] in ACTIVE_STOPS]
+                stops = protective_stops(order)
                 if len(stops) != 1 or number(stops[0]["qty"], positive=True) < filled - sold:
                     raise StateError("missing_broker_stop")
         return account, positions, orders, current_clock, marked
@@ -422,6 +441,8 @@ def watchdog(root, *, once=False):
                             if filled > qty:
                                 raise StateError("entry_overfill")
                             if 0 < filled < qty:
+                                if 0 <= (utcnow()-timestamp(item['created_at'])).total_seconds() < 15:
+                                    continue
                                 raise StateError("partial_entry_requires_flatten")
                             legs = order.get("legs") or []
                             if any(leg.get("symbol") != item["symbol"] or leg.get("side") != "sell" for leg in legs):
@@ -448,14 +469,19 @@ def watchdog(root, *, once=False):
                             if sold > filled:
                                 raise StateError("exit_overfill")
                             if filled > sold:
-                                stops = [leg for leg in legs if leg.get("type") == "stop" and leg.get("status") in ACTIVE_STOPS]
+                                stops = protective_stops(order)
                                 if (len(stops) != 1 or number(stops[0]["qty"], positive=True)
                                         - number(stops[0]["filled_qty"]) < filled - sold):
                                     raise StateError("missing_broker_stop")
                         # Readiness means a completed health/protection scan.
                         if not engine.ledger.get("halted", True):
                             engine.ledger.set("watchdog_heartbeat", utcnow().isoformat())
-            except Exception:
+            except Exception as exc:
+                # Preserve fixed internal failure codes without broker payloads or secrets.
+                detail = str(exc) if isinstance(exc, StateError) else type(exc).__name__
+                if not re.fullmatch(r'[A-Za-z_]{1,80}', detail):
+                    detail = 'unclassified_failure'
+                engine.ledger.event('watchdog_failure_detail', {'code': detail})
                 engine.halt("watchdog_api_or_protection_failure")
             if engine.ledger.get("halted", True):
                 try:

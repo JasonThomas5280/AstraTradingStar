@@ -17,6 +17,7 @@ logs/
 *.db-wal
 *.db-shm
 state/*.lock
+state/*.pid
 HALT.md
 state/postmortem_*
 *.parquet

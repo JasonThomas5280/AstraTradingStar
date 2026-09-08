@@ -20,3 +20,29 @@ No autonomous trading service was started. Do not infer readiness from passing t
 Next: inspect CI, freeze revisions before unseen validation, complete genuine
 qualification artifacts, then use initialize/readiness/serve per README. The
 operator's cash target alone is insufficient to approve an entry.
+
+## Execution drill update — 2026-09-08
+One operator-directed paper entry and immediate watchdog exit completed. Broker
+verified the account flat with no open orders. Local reports/operator_drill.json
+and state/postmortem_2026-09-08.md contain actual fills and outcome. Halt is latched.
+Account response omits daytrade_count; autonomous startup requires a tested
+history-derived counter fallback rather than assuming zero. No autonomous strategy
+was enabled by this manual execution test.
+
+## Revised operator mandate and experimental worker
+The operator explicitly requested immediate allocation with <=$250 cash and
+authorized strategy replacement. config/paper_experiment.json and
+docs/paper-experiment.md define the separate experimental momentum service.
+It is not a qualified pullback deployment. Current execution status must be read
+from local reports/momentum_paper_account.json, runtime ledger and the broker.
+Local logs/momentum_service_v3.log tracks the current startup. Credentials are
+in the hidden process environment only. Do not launch another worker or watchdog
+without inspecting existing processes and ownership locks.
+
+Integration repairs: accept a held bracket stop only with a fully filled parent
+and active profit leg; allow a bounded 15-second partial-fill settlement interval
+while blocking new entries; reset stale empty liquidation phase only when flat,
+reconciled, and holding watchdog ownership. Actual earlier recovery fills are
+journaled; postmortem_momentum_2026-09-08.md stays local. Full suite:295 tests.
+Research: final252-session experiment return11.70%, SPY price return18.15%,
+167 trades, max closing drawdown5.79%. Experimental, not proven outperformance.

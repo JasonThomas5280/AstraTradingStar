@@ -76,8 +76,9 @@ loss halt,10% peak drawdown stop, and four-name correlation-cluster rejection.
 PDT entries are conservatively blocked below $25,000 after 3 recorded day trades.
 Crypto, options, shorts, other strategy families, and additions remain disabled.
 
-Broker brackets activate exits only after the entry fully fills. Partial entries
-therefore trigger a halt/liquidation attempt. Network/socket timeouts and exchange
+Broker brackets activate exits only after the entry fully fills. The experimental
+worker blocks new entries and permits at most 15 seconds for a partial parent to
+settle; unresolved partial entries trigger liquidation. Network/socket timeouts and exchange
 halts can prevent a timely exit: the code reports verified outcomes and never
 claims a guaranteed 60-second flatten. Protective stops cannot eliminate gap losses.
 
@@ -107,3 +108,12 @@ external research or prove a trading edge by itself.
 References: [Alpaca orders](https://docs.alpaca.markets/us/docs/orders-at-alpaca),
 [historical bars](https://docs.alpaca.markets/us/reference/stockbars),
 [authentication](https://docs.alpaca.markets/us/docs/authentication).
+
+## Operator-directed paper experiment
+
+The revised September 8 mandate has a separate [momentum paper service](docs/paper-experiment.md).
+It targets at most $250 uninvested cash, uses diversified ETF momentum and
+broker-hosted brackets, and retains the independent watchdog. This experimental
+authorization does not qualify the original pullback strategy or enable live money.
+Its retrospective final-year test returned 11.70% versus 18.15% for SPY price
+return; no claim of maximum profitability or benchmark outperformance is made.

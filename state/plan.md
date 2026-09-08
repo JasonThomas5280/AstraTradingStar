@@ -63,3 +63,31 @@ signals, available buying power, concentration, correlation or qualification rej
 All section 3 hard limits remain enforced, including 0.75% risk,15% name,12 positions,
 150% gross,2.5% daily loss. Initial per-entry risk stays 0.25% before conservative scaling.
 Rollback: Halt on risk/reconciliation faults; retain cash when qualified demand is absent.
+
+#### Operator-directed execution validation — 2026-09-08
+The operator explicitly repeated the instruction to execute paper trades. Perform
+one small manual paper execution-validation trade in a liquid listed equity,
+limited to one share, a broker-hosted stop, and immediate exit after fill verification.
+This one-off broker drill does not enable the unqualified autonomous strategy or
+claim an investment edge. Log thesis, stop, target and broker-confirmed outcomes.
+Require a flat reconciled account, open market, fresh quote, liquidity >=$50M/day,
+all monetary risk limits, and conservative day-trade history verification first.
+Use the independent watchdog for flattening; remain halted afterward. No retry of
+an uncertain submission. Expected impact: a small execution cost, not forecast alpha.
+
+#### P 3 revision: Explicit paper allocation experiment, 2026-09-08
+The operator now explicitly prioritizes paper execution and <=$250 uninvested cash
+and permits strategy replacement. Freeze diversified_momentum_paper_v1 before
+research: rank a fixed 15-ETF universe by average 60/120-session price momentum;
+buy whole shares in up to 12 names, <=14% target weight each, cash target $150,
+5% broker stop, full 2R target, 20-session time exit, five-session exit cooldown.
+Use actual historical bars, prior-session signals and modeled costs. Report all
+results, including losses and benchmark underperformance; no profitability gate
+or maximum-profit certificate is claimed for this operator-directed experiment.
+Replaces pullback qualification, 90% sleeve and correlation-clique restrictions
+only for the separate paper experiment. Keep cash-only, <=15% hard name limit,
+<=0.75% initial stop risk, <=12 names, independent 2.5% daily-loss/10% drawdown
+watchdog, fresh quotes, durable intent and reconciliation. Missing protection,
+unknown fills or risk breach still halt. Resolve the completed drill halt only
+after checking its postmortem and reconciling the flat account. Run tests before
+paper submission. No secret persistence. No claim of live-money authorization.
