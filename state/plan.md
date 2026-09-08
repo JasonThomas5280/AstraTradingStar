@@ -2,7 +2,7 @@
 
 ## Proposed
 
-### P1: Paper-only risk foundation (2026-09-08)
+### P 1: Paper-only risk foundation (2026-09-08)
 What: Implement position sizing, immutable/tightening stops, pre-trade portfolio checks,
 a persistent circuit breaker, paper-only read-only broker diagnostics, and CI tests.
 Why: Prevent discretionary or malformed requests from bypassing the master risk rules.
@@ -36,3 +36,30 @@ None.
 - 30-day out-of-sample positive expectancy.
 - Independent paper-account flatten verification within 60 seconds.
 - Execution lifecycle, news/halt/calendar/correlation adapters, and monitoring.
+
+### P 2: Autonomous paper execution and frozen strategy research (2026-09-08)
+What: Implement an authenticated paper-only broker adapter, durable serialized order
+intents and reconciliation, supervised trading worker plus independent watchdog,
+strategy 6.1 signal generation, chronological research, operator CLI, and failure tests.
+Why: Turn the foundation into executable service code while rejecting uncertain
+fills, missing validation, stale data, external holdings and duplicate entry attempts.
+Expected impact: Measurable paper expectancy after validation; no guaranteed profit.
+Use the frozen pullback rules and a conservative 0.25% entry risk / 10% sleeve for
+initial qualification. Optimize only from new out-of-sample evidence, not promises.
+Measure: Unit/property/chaos CI passes, no duplicate POST on uncertain response,
+restart reconstruction, independent kill behavior, historical holdout metrics.
+Rollback: Disable new entries and latch halt on reconciliation, watchdog, or risk failure.
+Historical daily-bar research is not a substitute for intraday replay or a real
+broker flatten drill. Actual service startup requires environment credentials and
+verified deployment evidence. Live money and strategies 6.2-6.7 remain unauthorized.
+
+### P 3: Operator allocation target (2026-09-08, market open)
+What: Record operator target of no more than 10% cash as 90% invested target, replacing
+the initial 10% service sleeve and original 40%6.1 sleeve with a 90% maximum sleeve.
+Why: Explicit operator request to put qualified paper capital to work.
+Expected impact: Higher exposure and potential drawdown; profitability remains unknown.
+Measure: Report actual cash fraction and target shortfall. Do not force entries when
+signals, available buying power, concentration, correlation or qualification reject them.
+All section 3 hard limits remain enforced, including 0.75% risk,15% name,12 positions,
+150% gross,2.5% daily loss. Initial per-entry risk stays 0.25% before conservative scaling.
+Rollback: Halt on risk/reconciliation faults; retain cash when qualified demand is absent.

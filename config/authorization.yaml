@@ -1,9 +1,14 @@
-# Declarative deployment intent. No executable trading loop exists yet.
-mode: paper
-trading_enabled: false
-live_trading_authorized: false
-paper_endpoint: https://paper-api.alpaca.markets
-enabled_strategies: []
-phase_one_candidate: '6.1'
-enabled_symbols: []
-restart_requires_postmortem: true
+{
+  "mode": "paper",
+  "trading_enabled": true,
+  "live_trading_authorized": false,
+  "paper_endpoint": "https://paper-api.alpaca.markets",
+  "enabled_strategies": ["6.1"],
+  "strategy_variant": "6.1_daily_full_2R_trailing_10session_v1",
+  "enabled_symbols": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "SPY", "QQQ"],
+  "risk_fraction": "0.0025",
+  "sleeve_fraction": "0.90",
+  "target_cash_fraction": "0.10",
+  "qualification_required": true,
+  "restart_requires_postmortem": true
+}

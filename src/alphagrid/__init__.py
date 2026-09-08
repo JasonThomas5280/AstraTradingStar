@@ -1,1 +1,1 @@
-"""AlphaGrid risk foundation. No order submission capability is included."""
+"""AlphaGrid supervised paper execution, risk controls, and frozen-strategy research."""

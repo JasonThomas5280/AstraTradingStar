@@ -1,22 +1,21 @@
 # AlphaGrid handoff — 2026-09-08
 
-Status: Foundation passes 111 local tests; critical risk modules have 100% statement
-and branch coverage. Trading disabled; no running scheduler or watchdog.
-Credentials: Environment variables absent at initial inspection. Replacement paper
-credentials must be configured locally after rotation. Never copy credentials here.
+Branch: codex/autonomous-paper-service. Paper execution, supervised worker,
+independent watchdog, ledger/reconciliation, strategy research, and tests implemented.
 
-Account equity, cash, buying power: UNKNOWN (not fetched).
-Positions, resting orders, sleeve utilization: UNKNOWN (not reconciled).
-No orders were placed by this implementation. Do not infer that the broker is flat.
+Actual account authentication succeeded; balances are kept in local runtime state.
+At verification there were no positions or open orders. No trades placed by this task.
+Credentials are never stored in the repository. Use rotated environment credentials.
 
-Enabled strategies: None. Strategy 6.1 requires all deployment evidence first.
-Strategies 6.2-6.7: Disabled pending phase-one qualification.
-Theses/candidates/performance metrics: None; no fabricated portfolio baseline.
+Requested target:10% cash /90% invested, constrained by risk and qualified signals.
+Historical research:342 actual daily bars for each of 8 symbols, zero trades in the
+30-session holdout at tested sizing. No profitable edge established. Strategies
+6.2–6.7 remain disabled. The full 2 R exit is a separately documented 6.1 variant.
 
-Next steps: Inspect CI on the proposed revision; configure rotated environment
-credentials; run read-only diagnostics; build validated data/reconciliation and
-execution adapters; collect replay/walk-forward evidence and perform real paper
-kill-switch drill before enabling strategy 6.1.
+Deployment blockers: current CI/evidence, actual 90-day intraday replay, positive
+30-day OOS, real positioned paper flatten drill. Qualification manifest is absent.
+No autonomous trading service was started. Do not infer readiness from passing tests.
 
-Lesson: Passing risk unit tests demonstrates modeled behavior, not broker execution
-safety or positive expectancy. See state/plan.md for the authoritative roadmap.
+Next: inspect CI, freeze revisions before unseen validation, complete genuine
+qualification artifacts, then use initialize/readiness/serve per README. The
+operator's cash target alone is insufficient to approve an entry.

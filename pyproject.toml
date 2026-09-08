@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "astratradingstar"
-version = "0.1.0"
-description = "AlphaGrid paper-only risk foundation; trading disabled"
+version = "0.2.0"
+description = "AlphaGrid supervised paper trading and strategy research"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["tzdata>=2025.2"]
 
 [project.optional-dependencies]
 test = ["pytest==9.1.1", "hypothesis==6.167.1", "coverage==7.16.0"]

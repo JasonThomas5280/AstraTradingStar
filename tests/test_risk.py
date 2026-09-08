@@ -28,7 +28,7 @@ def snapshot(**changes):
 def test_good_proposal():
     decision = evaluate(proposal(), snapshot())
     assert decision.allowed
-    assert "execution_disabled" in decision.reason
+    assert decision.reason == "proposal_within_limits"
     with pytest.raises(TypeError):
         bool(decision)
 
@@ -152,7 +152,7 @@ def correlations(items, value=D(0)):
     (exposures(12, 1), "position_count"),
     (exposures(1, 151), "concentration"),
     (exposures(10, 150), "gross_exposure"),
-    (exposures(4, 100), "strategy_sleeve"),
+    (exposures(9, 100), "strategy_sleeve"),
     (exposures(1, 100), "missing_60_day_correlation"),
 ])
 def test_portfolio_checks(items, reason):

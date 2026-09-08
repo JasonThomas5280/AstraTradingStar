@@ -1,74 +1,109 @@
 # AstraTradingStar / AlphaGrid
 
-Paper-only risk foundation. **Trading is disabled.** This repository does not
-submit orders, run an autonomous trading service, or implement a profitable strategy.
+A supervised **paper-only** trading service with broker order submission, durable
+reconciliation, a separate liquidation watchdog, and reproducible strategy research.
+It has no live-money endpoint and makes no profitability guarantee.
 
-The initial implementation checks long-equity proposals for strategy 6.1. It includes
-decimal-based sizing, tightening-only stops, portfolio exposure and correlation checks,
-a persistent halt controller with a broker interface, and read-only Alpaca diagnostics.
-The circuit breaker is tested with fault-injection brokers; a real watchdog adapter
-and real flatten drill are still required. Config files describe deployment intent;
-they cannot enable execution in this release.
+## Current deployment status
 
-## Install and verify
+The code can submit protected long-equity limit brackets after qualification.
+Actual autonomous trading has **not been enabled**: the required intraday replay,
+positive out-of-sample evidence, and real positioned kill-switch drill are missing.
+An allocation request in config does not bypass those checks.
 
-Python 3.11 or later (CI uses 3.12):
+The operator target is **10% cash / 90% invested**, subject to qualified signals,
+whole-share sizing, buying power, and hard risk limits. The service reports target
+shortfall and retains cash when it cannot find qualifying entries. It never buys
+solely to reduce cash.
 
-```sh
+## Setup
+
+Python 3.11+ (CI uses 3.12):
+
+```powershell
 python -m venv .venv
-# Windows PowerShell:
 .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
 python -m pip install -e ".[test]"
+python -m alphagrid status
+python -m alphagrid check-account
+```
+
+Set `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` in the launching process environment.
+Use rotated paper credentials. No credentials belong in files, Git, reports, or
+shell history. Endpoint overrides, redirects, and environment proxies are rejected.
+
+## Operator commands
+
+Run from the repository root, or pass `--root C:\path\to\AstraTradingStar` before
+any command:
+
+```powershell
+python -m alphagrid initialize       # Dedicated account; must be flat, no open orders
+python -m alphagrid observe --once   # Read/reconcile only; never starts the watchdog
+python -m alphagrid readiness        # Lists deployment blockers; fails when blocked
+python -m alphagrid serve            # Supervised worker + independent watchdog
+python -m alphagrid halt             # Latch halt and attempt paper liquidation
+python -m alphagrid drill            # Real paper drill; leaves account halted
+```
+
+`serve` requires current revision evidence and an initialized, unhalted account.
+The worker scans every 5 minutes; the watchdog scans between risk checks and keeps
+monitoring after flattening. If the worker fails or you interrupt the supervisor,
+the watchdog is left running to monitor/liquidate; terminal output explains this.
+Stopping the watchdog while positions remain defeats independent protection.
+
+A halt has no automatic reset. Resolve the cause, write a postmortem, refresh all
+qualification evidence, and reconcile state before a reviewed restart. Do not
+remove the database or edit the halt latch to restart.
+
+## Frozen strategy and risk
+
+Strategy `6.1_daily_full_2R_trailing_10session_v1` uses completed daily bars: rising
+50-day SMA, EMA 20 pullback with falling volume, bullish reversal with rising volume,
+RSI 14 between 40 and 55, price at least $5, average daily dollar volume at least $50 M.
+Entry requires a fresh quote crossing the signal trigger within its 0.1% entry cap.
+
+This is an explicitly different exit variant from the initial 50% scale-out brief:
+the full position receives a 2 R take-profit and stop bracket. Profitable closes can
+tighten the stop using EMA 10/2 ATR. A 10-session time exit is requested near session
+close (or next available session if overdue). The daily backtest approximates that
+exit at the close, so its results are research, not execution certification.
+
+The service requests at most 0.25% risk per entry before a permanent 0.5 macro multiplier
+and an additional 0.5 drawdown multiplier after 1.5% daily loss. It preserves the 0.75%
+hard risk ceiling,15% name concentration,12 positions,150% gross exposure,2.5% daily
+loss halt,10% peak drawdown stop, and four-name correlation-cluster rejection.
+PDT entries are conservatively blocked below $25,000 after 3 recorded day trades.
+Crypto, options, shorts, other strategy families, and additions remain disabled.
+
+Broker brackets activate exits only after the entry fully fills. Partial entries
+therefore trigger a halt/liquidation attempt. Network/socket timeouts and exchange
+halts can prevent a timely exit: the code reports verified outcomes and never
+claims a guaranteed 60-second flatten. Protective stops cannot eliminate gap losses.
+
+## Research and verification
+
+```powershell
+python -m alphagrid download AAPL --start 2025-01-01 --end 2026-09-04T23:59:59Z --output data/AAPL.csv
+python -m alphagrid research AAPL data/AAPL.csv
+python scripts/research_universe.py --initial-equity 100000
 python -m coverage run -m pytest -q
 python -m coverage report
 python -m coverage json
 python scripts/check_coverage.py
-python -m alphagrid
 ```
 
-Credentials belong only in the process environment: `APCA_API_KEY_ID` and
-`APCA_API_SECRET_KEY`. Rotate credentials that were exposed in chat. Do not commit
-them, put them in reports, or paste them into command-line arguments. The diagnostic
-prints presence only. After setting replacement credentials locally:
+Research uses chronological data, fixed parameters, costs, capped entries,
+conservative same-bar ordering, and an independent final 30-session holdout.
+It never grants deployment authorization. Do not optimize on the holdout after
+seeing its results; freeze any revised strategy before collecting new evidence.
 
-```sh
-python -m alphagrid --check-account
-```
+See [qualification requirements](docs/qualification.md), [plan](state/plan.md), and
+[verification status](reports/verification.md). Runtime data and account reports
+stay local and are ignored by Git. Qualification artifacts are operator-supplied
+proof whose hashes/consistency are checked; the validator does not authenticate
+external research or prove a trading edge by itself.
 
-This reads the paper account, positions and open-order count. It makes no orders
-and does not establish reconciliation. Network errors fail closed. Endpoint changes,
-redirects and environment proxies are rejected.
-
-## Risk behavior and limits
-
-- 2.5% daily-loss latch; sizing halves after a recorded 1.5% daily loss even if equity recovers.
-- Refuse new entries at 10% peak drawdown (the stricter success constraint).
-- 0.75% proposed position risk; 15% name concentration; 150% gross exposure;
-  at most 12 underlying positions; 40% total phase-one sleeve.
-- Existing holdings AND all pending entry reservations must enter the snapshot.
-  Additions to an existing name are disabled. Pending cancels remain reservations.
-- Block four-name cliques with pairwise correlation >=0.7; absent correlation blocks entry.
-- Conservative PDT entry block at three day trades for equity below $25,000.
-- Only listed, unhalted equities priced >=$5 with >=$50M average daily dollar volume.
-- Crypto, options, short sales, and strategies 6.2-6.7 are entirely disabled. Their
-  allocation, weekend and earnings requirements must be implemented before enablement.
-- Gate decisions concern proposals only. There is no order manager, reservation lock,
-  quote/calendar validation adapter, deployment authorization, or trading scheduler yet.
-- The halt controller remains halted after a confirmed flat book. No automatic reset
-  exists; a postmortem and verified next-session restart procedure must precede deployment.
-
-A stop-based risk calculation cannot bound actual losses through market gaps,
-slippage, exchange halts or unavailable broker APIs. The circuit breaker only reports
-success after observing empty positions and orders within its deadline; an unresponsive
-broker can prevent flattening. Call timeouts must be honored by its future adapter.
-
-## Deployment blockers
-
-See [state/plan.md](state/plan.md), [verification](reports/verification.md), and
-[handoff](state/handoff.md). Unit/property/chaos tests do not substitute for the
-required 90-day historical replay, 30-day walk-forward, five clean paper days,
-or broker kill-switch drill. No historical performance or fills are fabricated.
-
-References: [Alpaca authentication](https://docs.alpaca.markets/us/docs/authentication),
-[paper account endpoint](https://docs.alpaca.markets/us/reference/getaccount-1).
+References: [Alpaca orders](https://docs.alpaca.markets/us/docs/orders-at-alpaca),
+[historical bars](https://docs.alpaca.markets/us/reference/stockbars),
+[authentication](https://docs.alpaca.markets/us/docs/authentication).
